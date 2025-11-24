@@ -66,7 +66,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <Users size={20} />
             </div>
             <span className="text-xs font-mono text-blue-600 dark:text-blue-300 bg-blue-500/10 px-2 py-0.5 rounded">
-              +12%
+              Samples
             </span>
           </div>
           <h3 className="text-3xl font-bold text-slate-900 dark:text-white">

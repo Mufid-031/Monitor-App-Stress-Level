@@ -20,19 +20,19 @@ export const getExploratoryInsights = async (
   try {
     const model = "gemini-2.5-flash";
     const prompt = `
-      Act as a Senior Data Scientist specializing in wearable biosignals. 
-      Analyze the following statistical summary of a stress monitoring dataset with 3 classes:
-      0 = Baseline/Relaxed
-      1 = Moderate Stress/Cognitive Load
-      2 = High Stress/Fear
-      
-      Features: HR (Heart Rate), EDA (Skin Conductance), BVP, Accelerometer.
-      
-      Summary Stats:
+      Bertindak sebagai Ilmuwan Data Senior yang berspesialisasi dalam biosignal yang dapat dikenakan.
+      Analisis ringkasan statistik berikut dari kumpulan data pemantauan stres dengan 3 kelas:
+      0 = Dasar/Santai
+      1 = Stres Sedang/Beban Kognitif
+      2 = Stres Tinggi/Ketakutan
+        
+      Fitur: HR (Denyut Jantung), EDA (Konduktansi Kulit), BVP, Akselerometer.
+        
+      Ringkasan Statistik:
       ${summaryStats}
-      
-      Provide 3 high-level insights about the feature separability and physiological patterns. 
-      Use technical but accessible language.
+        
+      Berikan 3 wawasan tingkat tinggi tentang keterpisahan fitur dan pola fisiologis.
+      Gunakan bahasa yang teknis namun mudah dipahami.
     `;
 
     const response = await ai.models.generateContent({

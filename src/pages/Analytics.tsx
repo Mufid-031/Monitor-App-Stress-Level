@@ -1,6 +1,5 @@
 /* eslint-disable react-hooks/static-components */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable no-useless-escape */
 import React, { useState, useMemo } from "react";
 import {
   LineChart,
@@ -32,6 +31,12 @@ import {
   Zap,
   Activity,
   Grid,
+  Move3d,
+  Info,
+  X,
+  BookOpen,
+  Fingerprint,
+  Waves,
 } from "lucide-react";
 import { getExploratoryInsights } from "../services/geminiService";
 import type { StressDataPoint } from "../types";
@@ -43,7 +48,6 @@ interface AnalyticsProps {
 
 // Custom lightweight Markdown Renderer for AI responses
 const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
-  // Helper to parse **bold** text inside a string
   const parseBold = (text: string) => {
     return text.split(/(\*\*.*?\*\*)/g).map((part, i) =>
       part.startsWith("**") && part.endsWith("**") ? (
@@ -60,16 +64,15 @@ const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
     <div className="space-y-2 text-sm">
       {content.split("\n").map((line, i) => {
         const trimmed = line.trim();
-        if (!trimmed) return <div key={i} className="h-2" />; // Spacer for empty lines
+        if (!trimmed) return <div key={i} className="h-2" />;
 
-        // Headers (### or ##)
         if (trimmed.startsWith("#")) {
           const level = trimmed.match(/^#+/)?.[0].length || 0;
           const text = trimmed.replace(/^#+\s*/, "");
           const className =
             level === 3
-              ? "text-base font-bold text-purple-600 dark:text-purple-400 mt-4 mb-2" // h3
-              : "text-lg font-bold text-slate-900 dark:text-white mt-6 mb-3 border-b border-slate-200 dark:border-white/10 pb-1"; // h1/h2
+              ? "text-base font-bold text-purple-600 dark:text-purple-400 mt-4 mb-2"
+              : "text-lg font-bold text-slate-900 dark:text-white mt-6 mb-3 border-b border-slate-200 dark:border-white/10 pb-1";
           return (
             <div key={i} className={className}>
               {parseBold(text)}
@@ -77,7 +80,6 @@ const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
           );
         }
 
-        // Numbered List (1. Point)
         if (/^\d+\./.test(trimmed)) {
           const number = trimmed.split(".")[0];
           const text = trimmed.replace(/^\d+\.\s*/, "");
@@ -96,19 +98,17 @@ const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
           );
         }
 
-        // Bullet List (* or -)
         if (trimmed.startsWith("* ") || trimmed.startsWith("- ")) {
           return (
             <div key={i} className="flex gap-2 pl-4 items-start">
               <span className="text-slate-400 mt-1.5 text-[8px]">•</span>
               <div className="text-slate-600 dark:text-slate-300 leading-relaxed">
-                {parseBold(trimmed.replace(/^[\*\-]\s*/, ""))}
+                {parseBold(trimmed.replace(/^[\\*\\-]\s*/, ""))}
               </div>
             </div>
           );
         }
 
-        // Regular Paragraph
         return (
           <p
             key={i}
@@ -122,12 +122,98 @@ const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
   );
 };
 
+// --- NEW COMPONENT: Analytics Guide ---
+const AnalyticsGuide: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const items = [
+    {
+      icon: Activity,
+      color: "text-cyan-500",
+      title: "Temporal Signal Correlation",
+      desc: "Menampilkan tren Heart Rate (HR) dan Skin Conductance (EDA) seiring waktu. Tujuannya untuk melihat pola kenaikan/penurunan fisiologis secara sinkron.",
+    },
+    {
+      icon: Move3d,
+      color: "text-orange-500",
+      title: "Vector3 Movement Correlations",
+      desc: "Korelasi antara Intensitas Gerakan (Magnitude XYZ) dengan respon tubuh. Digunakan untuk membedakan apakah HR naik karena Stress (Mental) atau karena Gerak (Fisik).",
+    },
+    {
+      icon: Fingerprint,
+      color: "text-pink-500",
+      title: "Class Profile Fingerprint (Radar)",
+      desc: "Profil 'Bentuk' dari setiap kelas (0, 1, 2). Memvisualisasikan fitur mana yang paling dominan pada setiap level stress (misal: High Stress didominasi EDA & HR tinggi).",
+    },
+    {
+      icon: BarChart2,
+      color: "text-blue-500",
+      title: "HR vs EDA Distribution",
+      desc: "Scatter plot untuk melihat sebaran data (Decision Boundary). Semakin terpisah warnanya, semakin mudah model membedakan antara Baseline vs Stress.",
+    },
+    {
+      icon: Zap,
+      color: "text-amber-500",
+      title: "Dataset Class Balance",
+      desc: "Menghitung jumlah sampel data per label. Penting untuk mengetahui apakah dataset 'Imbalanced' (timpang) yang bisa membuat model bias.",
+    },
+    {
+      icon: Waves,
+      color: "text-emerald-500",
+      title: "Raw Signal Check (Slice)",
+      desc: "Melihat bentuk gelombang asli (Raw Waveform) dari Accelerometer dan BVP pada 200 titik terakhir untuk Quality Control sinyal (Noise detection).",
+    },
+  ];
+
+  return (
+    <div className="glass-card p-6 mb-8 relative border-l-4 border-l-cyan-500 animate-in fade-in slide-in-from-top-4">
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
+      >
+        <X size={20} />
+      </button>
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2 bg-cyan-500/20 rounded-lg">
+          <BookOpen className="text-cyan-500" size={20} />
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+            System Reference Guide
+          </h3>
+          <p className="text-xs text-slate-500 uppercase tracking-widest">
+            Visualization Documentation
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {items.map((item, idx) => (
+          <div
+            key={idx}
+            className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-white/5 hover:border-cyan-500/30 transition-colors"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <item.icon size={16} className={item.color} />
+              <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">
+                {item.title}
+              </h4>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              {item.desc}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export const Analytics: React.FC<AnalyticsProps> = ({
   data,
   isDark = true,
 }) => {
   const [insight, setInsight] = useState<string | null>(null);
   const [loadingInsight, setLoadingInsight] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   // Theme Constants
   const chartText = isDark ? "#94a3b8" : "#64748b";
@@ -137,24 +223,32 @@ export const Analytics: React.FC<AnalyticsProps> = ({
 
   // --- PERFORMANCE OPTIMIZATION START ---
 
-  // 1. Heavy Sampling for Trend Charts (Scatter & Global Line)
-  // Reduced from 400 to 150 to make the charts cleaner and less cluttered.
   const sampledData = useMemo(() => {
     const MAX_POINTS = 150;
     if (data.length <= MAX_POINTS) return data;
-
     const step = Math.ceil(data.length / MAX_POINTS);
     return data.filter((_, index) => index % step === 0);
   }, [data]);
 
-  // 2. Raw Slice for Waveforms (BVP & Accelerometer)
-  // Downsampling ruins waveforms. Instead, we show the last ~200 raw points (Zoomed view).
+  const correlationData = useMemo(() => {
+    const withVector = data.map((d) => ({
+      ...d,
+      accMagnitude: Math.sqrt(
+        Math.pow(d.x, 2) + Math.pow(d.y, 2) + Math.pow(d.z, 2)
+      ),
+    }));
+
+    const MAX_POINTS = 200;
+    if (withVector.length <= MAX_POINTS) return withVector;
+    const step = Math.ceil(withVector.length / MAX_POINTS);
+    return withVector.filter((_, index) => index % step === 0);
+  }, [data]);
+
   const rawSliceData = useMemo(() => {
     const ZOOM_POINTS = 200;
     return data.slice(-ZOOM_POINTS);
   }, [data]);
 
-  // 3. Memoize Class Distribution Calculation
   const labelDist = useMemo(
     () => [
       {
@@ -176,7 +270,6 @@ export const Analytics: React.FC<AnalyticsProps> = ({
     [data]
   );
 
-  // 4. Memoize Radar Data Calculation
   const radarData = useMemo(() => {
     const sums = {
       0: { hr: 0, eda: 0, bvp: 0, y: 0, count: 0 },
@@ -185,10 +278,8 @@ export const Analytics: React.FC<AnalyticsProps> = ({
     };
 
     data.forEach((d) => {
-      // Use fallback if label is missing or not 0/1/2
       const label =
         d.label === 0 || d.label === 1 || d.label === 2 ? d.label : 0;
-
       if (sums[label] !== undefined) {
         sums[label].hr += d.hr || 0;
         sums[label].eda += d.eda || 0;
@@ -202,7 +293,6 @@ export const Analytics: React.FC<AnalyticsProps> = ({
       return sums[label].count > 0 ? sums[label][key] / sums[label].count : 0;
     };
 
-    // Radar charts need data to display something even if a class is empty
     return [
       {
         subject: "HR",
@@ -285,6 +375,50 @@ export const Analytics: React.FC<AnalyticsProps> = ({
     return null;
   };
 
+  const CorrelationTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div
+          style={{
+            backgroundColor: tooltipBg,
+            borderColor: gridColor,
+            color: tooltipText,
+          }}
+          className="border p-3 rounded-lg shadow-xl text-xs font-mono"
+        >
+          <p className="font-bold mb-2">Sample #{data.id}</p>
+          <p style={{ color: CHART_COLORS.text }}>
+            ACC Vector3: {data.accMagnitude.toFixed(2)} m/s²
+          </p>
+          <p style={{ color: payload[0].color }}>
+            {payload[0].name}: {payload[0].value.toFixed(2)}
+          </p>
+          <p
+            className="mt-1"
+            style={{
+              color:
+                data.label === 0
+                  ? LABEL_COLORS[0]
+                  : data.label === 1
+                  ? LABEL_COLORS[1]
+                  : LABEL_COLORS[2],
+            }}
+          >
+            Class: {data.label}
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const LABEL_COLORS: any = {
+    0: "#10b981",
+    1: "#f59e0b",
+    2: "#ef4444",
+  };
+
   return (
     <div className="space-y-8 pb-10">
       <div className="flex flex-col md:flex-row justify-between items-start gap-4">
@@ -296,19 +430,33 @@ export const Analytics: React.FC<AnalyticsProps> = ({
             Multidimensional visualization of sensor fusion data.
           </p>
         </div>
-        <button
-          onClick={handleGenerateInsight}
-          disabled={loadingInsight}
-          className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white px-5 py-2.5 rounded-full shadow-lg shadow-purple-900/30 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
-        >
-          {loadingInsight ? (
-            <RefreshCw className="animate-spin" size={18} />
-          ) : (
-            <Sparkles size={18} />
-          )}
-          {loadingInsight ? "Processing..." : "Ask AI Scientist"}
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowGuide(!showGuide)}
+            className="flex items-center gap-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-4 py-2.5 rounded-full transition-all"
+          >
+            <Info size={18} />
+            <span className="hidden sm:inline">
+              {showGuide ? "Hide Guide" : "Reference"}
+            </span>
+          </button>
+          <button
+            onClick={handleGenerateInsight}
+            disabled={loadingInsight}
+            className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white px-5 py-2.5 rounded-full shadow-lg shadow-purple-900/30 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            {loadingInsight ? (
+              <RefreshCw className="animate-spin" size={18} />
+            ) : (
+              <Sparkles size={18} />
+            )}
+            {loadingInsight ? "Processing..." : "Ask AI Scientist"}
+          </button>
+        </div>
       </div>
+
+      {/* REFERENCE GUIDE (TOGGLEABLE) */}
+      {showGuide && <AnalyticsGuide onClose={() => setShowGuide(false)} />}
 
       {/* AI Insight Box */}
       {insight && (
@@ -335,7 +483,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({
 
       {/* Grid Layout for Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {/* 1. Time Series Overview (Downsampled for Trend) */}
+        {/* 1. Time Series Overview */}
         <div className="glass-card p-5 rounded-2xl col-span-1 lg:col-span-2 xl:col-span-3">
           <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-4 flex items-center gap-2">
             <Activity size={16} className="text-cyan-600 dark:text-cyan-400" />
@@ -395,6 +543,186 @@ export const Analytics: React.FC<AnalyticsProps> = ({
           </div>
         </div>
 
+        {/* --- NEW SECTION: Vector3 Correlations --- */}
+        <div className="col-span-1 lg:col-span-2 xl:col-span-3 mt-4 mb-2">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-orange-500/10 rounded-lg">
+              <Move3d
+                size={20}
+                className="text-orange-600 dark:text-orange-400"
+              />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                Vector3 Movement Correlations
+              </h3>
+              <p className="text-xs text-slate-500">
+                Analysis of Acceleration Magnitude (sqrt(x²+y²+z²)) vs
+                Physiological responses
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Correlation 1: Motion vs HR */}
+        <div className="glass-card p-5 rounded-2xl">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4 flex justify-between">
+            <span>Motion (X) vs Heart Rate (Y)</span>
+            <span className="text-red-500">HR Impact</span>
+          </h3>
+          <div className="h-60 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart
+                margin={{ top: 10, right: 10, bottom: 10, left: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                <XAxis
+                  type="number"
+                  dataKey="accMagnitude"
+                  name="ACC Vector"
+                  unit="m/s²"
+                  stroke={chartText}
+                  fontSize={10}
+                  domain={["auto", "auto"]}
+                />
+                <YAxis
+                  type="number"
+                  dataKey="hr"
+                  name="HR"
+                  unit="bpm"
+                  stroke={chartText}
+                  fontSize={10}
+                  domain={["auto", "auto"]}
+                />
+                <Tooltip
+                  cursor={{ strokeDasharray: "3 3" }}
+                  content={<CorrelationTooltip />}
+                />
+                <Scatter
+                  name="HR vs Motion"
+                  data={correlationData}
+                  fill="#ef4444"
+                  shape="circle"
+                >
+                  {correlationData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={LABEL_COLORS[entry.label] || "#ef4444"}
+                      fillOpacity={0.6}
+                    />
+                  ))}
+                </Scatter>
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Correlation 2: Motion vs EDA */}
+        <div className="glass-card p-5 rounded-2xl">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4 flex justify-between">
+            <span>Motion (X) vs Skin Cond (Y)</span>
+            <span className="text-purple-500">EDA Artifacts</span>
+          </h3>
+          <div className="h-60 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart
+                margin={{ top: 10, right: 10, bottom: 10, left: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                <XAxis
+                  type="number"
+                  dataKey="accMagnitude"
+                  name="ACC Vector"
+                  unit="m/s²"
+                  stroke={chartText}
+                  fontSize={10}
+                  domain={["auto", "auto"]}
+                />
+                <YAxis
+                  type="number"
+                  dataKey="eda"
+                  name="EDA"
+                  unit="µS"
+                  stroke={chartText}
+                  fontSize={10}
+                  domain={["auto", "auto"]}
+                />
+                <Tooltip
+                  cursor={{ strokeDasharray: "3 3" }}
+                  content={<CorrelationTooltip />}
+                />
+                <Scatter
+                  name="EDA vs Motion"
+                  data={correlationData}
+                  fill="#8b5cf6"
+                  shape="circle"
+                >
+                  {correlationData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={LABEL_COLORS[entry.label] || "#8b5cf6"}
+                      fillOpacity={0.6}
+                    />
+                  ))}
+                </Scatter>
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Correlation 3: Motion vs BVP */}
+        <div className="glass-card p-5 rounded-2xl">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4 flex justify-between">
+            <span>Motion (X) vs BVP (Y)</span>
+            <span className="text-cyan-500">Signal Noise</span>
+          </h3>
+          <div className="h-60 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart
+                margin={{ top: 10, right: 10, bottom: 10, left: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                <XAxis
+                  type="number"
+                  dataKey="accMagnitude"
+                  name="ACC Vector"
+                  unit="m/s²"
+                  stroke={chartText}
+                  fontSize={10}
+                  domain={["auto", "auto"]}
+                />
+                <YAxis
+                  type="number"
+                  dataKey="bvp"
+                  name="BVP"
+                  unit="mV"
+                  stroke={chartText}
+                  fontSize={10}
+                  domain={["auto", "auto"]}
+                />
+                <Tooltip
+                  cursor={{ strokeDasharray: "3 3" }}
+                  content={<CorrelationTooltip />}
+                />
+                <Scatter
+                  name="BVP vs Motion"
+                  data={correlationData}
+                  fill="#06b6d4"
+                  shape="circle"
+                >
+                  {correlationData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={LABEL_COLORS[entry.label] || "#06b6d4"}
+                      fillOpacity={0.6}
+                    />
+                  ))}
+                </Scatter>
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
         {/* 2. Radar Chart - Feature Profile */}
         <div className="glass-card p-5 rounded-2xl">
           <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-4 flex items-center gap-2">
@@ -438,7 +766,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({
           </div>
         </div>
 
-        {/* 3. Scatter Correlation (Downsampled) */}
+        {/* 3. Scatter Correlation (HR vs EDA) */}
         <div className="glass-card p-5 rounded-2xl">
           <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-4 flex items-center gap-2">
             <BarChart2 size={16} className="text-blue-600 dark:text-blue-400" />
