@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/static-components */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable no-useless-escape */
 import React, { useState, useMemo } from "react";
 import {
   LineChart,
@@ -40,6 +41,87 @@ interface AnalyticsProps {
   isDark?: boolean;
 }
 
+// Custom lightweight Markdown Renderer for AI responses
+const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
+  // Helper to parse **bold** text inside a string
+  const parseBold = (text: string) => {
+    return text.split(/(\*\*.*?\*\*)/g).map((part, i) =>
+      part.startsWith("**") && part.endsWith("**") ? (
+        <strong key={i} className="text-slate-900 dark:text-white font-bold">
+          {part.slice(2, -2)}
+        </strong>
+      ) : (
+        part
+      )
+    );
+  };
+
+  return (
+    <div className="space-y-2 text-sm">
+      {content.split("\n").map((line, i) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={i} className="h-2" />; // Spacer for empty lines
+
+        // Headers (### or ##)
+        if (trimmed.startsWith("#")) {
+          const level = trimmed.match(/^#+/)?.[0].length || 0;
+          const text = trimmed.replace(/^#+\s*/, "");
+          const className =
+            level === 3
+              ? "text-base font-bold text-purple-600 dark:text-purple-400 mt-4 mb-2" // h3
+              : "text-lg font-bold text-slate-900 dark:text-white mt-6 mb-3 border-b border-slate-200 dark:border-white/10 pb-1"; // h1/h2
+          return (
+            <div key={i} className={className}>
+              {parseBold(text)}
+            </div>
+          );
+        }
+
+        // Numbered List (1. Point)
+        if (/^\d+\./.test(trimmed)) {
+          const number = trimmed.split(".")[0];
+          const text = trimmed.replace(/^\d+\.\s*/, "");
+          return (
+            <div
+              key={i}
+              className="flex gap-3 mt-3 mb-1 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-white/5"
+            >
+              <span className="font-mono text-cyan-600 dark:text-cyan-400 font-bold text-base h-6 w-6 flex items-center justify-center bg-cyan-100 dark:bg-cyan-900/30 rounded">
+                {number}
+              </span>
+              <div className="text-slate-700 dark:text-slate-300 leading-relaxed flex-1">
+                {parseBold(text)}
+              </div>
+            </div>
+          );
+        }
+
+        // Bullet List (* or -)
+        if (trimmed.startsWith("* ") || trimmed.startsWith("- ")) {
+          return (
+            <div key={i} className="flex gap-2 pl-4 items-start">
+              <span className="text-slate-400 mt-1.5 text-[8px]">•</span>
+              <div className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                {parseBold(trimmed.replace(/^[\*\-]\s*/, ""))}
+              </div>
+            </div>
+          );
+        }
+
+        // Regular Paragraph
+        return (
+          <p
+            key={i}
+            className="text-slate-600 dark:text-slate-300 leading-relaxed"
+          >
+            {parseBold(trimmed)}
+          </p>
+        );
+      })}
+    </div>
+  );
+};
+
 export const Analytics: React.FC<AnalyticsProps> = ({
   data,
   isDark = true,
@@ -77,17 +159,17 @@ export const Analytics: React.FC<AnalyticsProps> = ({
     () => [
       {
         name: "Base (0)",
-        value: data.filter((d) => d.LABEL === 0).length,
+        value: data.filter((d) => d.label === 0).length,
         fill: "#10b981",
       },
       {
         name: "Mid (1)",
-        value: data.filter((d) => d.LABEL === 1).length,
+        value: data.filter((d) => d.label === 1).length,
         fill: "#f59e0b",
       },
       {
         name: "High (2)",
-        value: data.filter((d) => d.LABEL === 2).length,
+        value: data.filter((d) => d.label === 2).length,
         fill: "#ef4444",
       },
     ],
@@ -103,8 +185,10 @@ export const Analytics: React.FC<AnalyticsProps> = ({
     };
 
     data.forEach((d) => {
-      const label = d.LABEL as 0 | 1 | 2;
-      // Safety check if label is valid
+      // Use fallback if label is missing or not 0/1/2
+      const label =
+        d.label === 0 || d.label === 1 || d.label === 2 ? d.label : 0;
+
       if (sums[label] !== undefined) {
         sums[label].hr += d.hr || 0;
         sums[label].eda += d.eda || 0;
@@ -229,20 +313,23 @@ export const Analytics: React.FC<AnalyticsProps> = ({
       {/* AI Insight Box */}
       {insight && (
         <div className="glass-card border-l-4 border-l-purple-500 p-6 rounded-r-xl animate-in fade-in slide-in-from-top-4">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-4 border-b border-purple-500/20 pb-4">
             <div className="p-2 bg-purple-500/20 rounded-lg">
               <Sparkles
                 className="text-purple-600 dark:text-purple-400"
                 size={20}
               />
             </div>
-            <h3 className="font-bold text-slate-900 dark:text-white">
-              Gemini Insights
-            </h3>
+            <div>
+              <h3 className="font-bold text-slate-900 dark:text-white">
+                Gemini Insights
+              </h3>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest">
+                Automated EDA Report
+              </p>
+            </div>
           </div>
-          <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed text-slate-600 dark:text-slate-300">
-            {insight}
-          </div>
+          <MarkdownRenderer content={insight} />
         </div>
       )}
 
@@ -390,9 +477,9 @@ export const Analytics: React.FC<AnalyticsProps> = ({
                     <Cell
                       key={`cell-${index}`}
                       fill={
-                        entry.LABEL === 0
+                        entry.label === 0
                           ? "#10b981"
-                          : entry.LABEL === 1
+                          : entry.label === 1
                           ? "#f59e0b"
                           : "#ef4444"
                       }

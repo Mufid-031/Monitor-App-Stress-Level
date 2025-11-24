@@ -19,7 +19,7 @@ export const DatasetView: React.FC<DatasetViewProps> = ({ data }) => {
 
   const filteredData = useMemo(() => {
     if (filterLabel === "all") return data;
-    return data.filter((d) => d.LABEL === filterLabel);
+    return data.filter((d) => d.label === filterLabel);
   }, [data, filterLabel]);
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
@@ -50,7 +50,7 @@ export const DatasetView: React.FC<DatasetViewProps> = ({ data }) => {
           row.bvp,
           row.eda,
           row.hr,
-          row.LABEL,
+          row.label,
           row.timestamp,
         ].join(",")
       ),
@@ -184,7 +184,7 @@ export const DatasetView: React.FC<DatasetViewProps> = ({ data }) => {
                   <td className="px-6 py-4 font-mono text-xs text-red-600 dark:text-red-400 font-bold">
                     {row.hr.toFixed(1)}
                   </td>
-                  <td className="px-6 py-4">{getLabelBadge(row.LABEL)}</td>
+                  <td className="px-6 py-4">{getLabelBadge(row.label)}</td>
                   <td className="px-6 py-4 text-slate-500 text-xs font-mono">
                     {row.timestamp}
                   </td>

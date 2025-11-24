@@ -22,31 +22,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
   isDark = true,
 }) => {
   const stats = useMemo(() => {
-    // Basic stats loop
     const total = data.length;
-    let baseline = 0;
-    let transient = 0;
-    let highStress = 0;
-    let sumHr = 0;
-    let sumEda = 0;
+    const baseline = data.filter((d) => d.label === 0).length;
+    const transient = data.filter((d) => d.label === 1).length;
+    const highStress = data.filter((d) => d.label === 2).length;
 
-    data.forEach((d) => {
-      if (d.LABEL === 0) baseline++;
-      else if (d.LABEL === 1) transient++;
-      else if (d.LABEL === 2) highStress++;
-      sumHr += d.hr;
-      sumEda += d.eda;
-    });
-
-    const avgHr = total > 0 ? sumHr / total : 0;
-    const avgEda = total > 0 ? sumEda / total : 0;
+    const avgHr = data.reduce((acc, curr) => acc + curr.hr, 0) / total;
+    const avgEda = data.reduce((acc, curr) => acc + curr.eda, 0) / total;
     return { total, baseline, transient, highStress, avgHr, avgEda };
   }, [data]);
 
-  // Use a stable slice for rendering to prevent heavy load if data is huge
-  // Taking last 100 points for 'Live' feel
-  const recentData = useMemo(() => data.slice(-100), [data]);
-
+  const recentData = data.slice(-40);
   const chartText = isDark ? "#94a3b8" : "#64748b";
   const gridColor = isDark ? "#1e293b" : "#e2e8f0";
 
@@ -80,7 +66,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <Users size={20} />
             </div>
             <span className="text-xs font-mono text-blue-600 dark:text-blue-300 bg-blue-500/10 px-2 py-0.5 rounded">
-              Samples
+              +12%
             </span>
           </div>
           <h3 className="text-3xl font-bold text-slate-900 dark:text-white">
@@ -143,31 +129,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex items-end gap-1 h-16 mb-2">
             <div
               className="flex-1 bg-emerald-500/20 rounded-t-sm relative group"
-              style={{
-                height: `${
-                  stats.total ? (stats.baseline / stats.total) * 100 : 0
-                }%`,
-              }}
+              style={{ height: `${(stats.baseline / stats.total) * 100}%` }}
             >
               <div className="absolute inset-0 hover:bg-emerald-500/40 transition-colors"></div>
             </div>
             <div
               className="flex-1 bg-amber-500/20 rounded-t-sm relative group"
-              style={{
-                height: `${
-                  stats.total ? (stats.transient / stats.total) * 100 : 0
-                }%`,
-              }}
+              style={{ height: `${(stats.transient / stats.total) * 100}%` }}
             >
               <div className="absolute inset-0 hover:bg-amber-500/40 transition-colors"></div>
             </div>
             <div
               className="flex-1 bg-red-500/20 rounded-t-sm relative group"
-              style={{
-                height: `${
-                  stats.total ? (stats.highStress / stats.total) * 100 : 0
-                }%`,
-              }}
+              style={{ height: `${(stats.highStress / stats.total) * 100}%` }}
             >
               <div className="absolute inset-0 hover:bg-red-500/40 transition-colors"></div>
             </div>

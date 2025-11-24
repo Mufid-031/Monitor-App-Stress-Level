@@ -6,7 +6,7 @@ export interface StressDataPoint {
   bvp: number;
   eda: number;
   hr: number;
-  LABEL: number; // 0 = Baseline, 1 = Transient Stress, 2 = High Stress
+  label: number; // 0 = Baseline, 1 = Transient Stress, 2 = High Stress
   timestamp: string;
 }
 
