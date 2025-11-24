@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import type { InsightResponse, PredictionInput } from "../types";
 
 const createClient = () => {
-  const apiKey = 'AIzaSyBzFW9IIcTZX_1lRrhpL_lBB_zIom_t2yo';
+  const apiKey = import.meta.env.VITE_API_KEY;
   if (!apiKey) {
     console.warn("API Key not found via process.env.API_KEY");
     return null;
