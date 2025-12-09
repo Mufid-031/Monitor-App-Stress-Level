@@ -176,8 +176,8 @@ export const Prediction: React.FC<PredictionProps> = ({ isDark = true }) => {
           <RangeSlider
             label="Blood Vol Pulse (BVP)"
             name="bvp"
-            min="-50"
-            max="50"
+            min="-500"
+            max="500"
             step="0.1"
             value={input.bvp}
             unit="mV"

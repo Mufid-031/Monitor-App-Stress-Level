@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable prefer-const */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { PCADataPoint, PCAResponse, PredictionInput, StressDataPoint } from "../types";
 
-import type { PredictionInput, StressDataPoint } from "../types";
 
 // Use 127.0.0.1 to avoid localhost DNS resolution issues on some systems
 const API_BASE_URL = "http://127.0.0.1:5000";
@@ -98,5 +98,61 @@ export const fetchRealDataset = async (): Promise<StressDataPoint[] | null> => {
       error
     );
     return null;
+  }
+};
+
+// Mock PCA Generator if Backend is missing
+const generateMockPCA = (): PCAResponse => {
+  const data: PCADataPoint[] = [];
+  for (let i = 0; i < 200; i++) {
+    const label = i % 3; // 0, 1, 2
+
+    // Create clusters
+    let cx = 0,
+      cy = 0,
+      cz = 0;
+    if (label === 1) {
+      cx = 2;
+      cy = 2;
+      cz = 1;
+    }
+    if (label === 2) {
+      cx = -2;
+      cy = 3;
+      cz = -1;
+    }
+
+    // Add noise
+    data.push({
+      id: i,
+      pc1: cx + (Math.random() - 0.5) * 1.5,
+      pc2: cy + (Math.random() - 0.5) * 1.5,
+      pc3: cz + (Math.random() - 0.5) * 1.5,
+      label: label,
+    });
+  }
+  return {
+    data,
+    variance: { pc1: 0.45, pc2: 0.25, pc3: 0.15, total: 0.85 },
+  };
+};
+
+export const fetchPCAAnalysis = async (): Promise<PCAResponse | null> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/pca`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      mode: "cors",
+    });
+
+    if (response.ok) {
+      return await response.json();
+    } else {
+      console.warn("PCA endpoint not found, using Mock fallback");
+      return generateMockPCA();
+    }
+  } catch (error) {
+    console.warn("PCA Fetch failed, using Mock fallback", error);
+    return generateMockPCA();
   }
 };

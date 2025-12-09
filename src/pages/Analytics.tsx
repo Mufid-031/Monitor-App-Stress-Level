@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/static-components */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   LineChart,
   Line,
@@ -37,9 +37,11 @@ import {
   BookOpen,
   Fingerprint,
   Waves,
+  Layers,
 } from "lucide-react";
 import { getExploratoryInsights } from "../services/geminiService";
-import type { StressDataPoint } from "../types";
+import { fetchPCAAnalysis } from "../services/api";
+import type { PCAResponse, StressDataPoint } from "../types";
 
 interface AnalyticsProps {
   data: StressDataPoint[];
@@ -135,7 +137,7 @@ const AnalyticsGuide: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       icon: Move3d,
       color: "text-orange-500",
       title: "Vector3 Movement Correlations",
-      desc: "Korelasi antara Intensitas Gerakan (Magnitude XYZ) dengan respon tubuh. Digunakan untuk membedakan apakah HR naik karena Stress (Mental) atau karena Gerak (Fisik).",
+      desc: "Korelasi antara Intensitas Gerakan (Magnitude XYZ) dengan respon tubuh. Menggunakan 'Balanced Sampling' (porsi kelas setara) agar semua label terlihat jelas.",
     },
     {
       icon: Fingerprint,
@@ -144,10 +146,16 @@ const AnalyticsGuide: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       desc: "Profil 'Bentuk' dari setiap kelas (0, 1, 2). Memvisualisasikan fitur mana yang paling dominan pada setiap level stress (misal: High Stress didominasi EDA & HR tinggi).",
     },
     {
+      icon: Layers,
+      color: "text-indigo-500",
+      title: "Latent Space (PCA)",
+      desc: "Reduksi dimensi untuk melihat 'Separability' (Keterpisahan) data. Jika titik warna hijau, kuning, merah terpisah jauh, artinya model ML akan mudah membedakannya.",
+    },
+    {
       icon: BarChart2,
       color: "text-blue-500",
       title: "HR vs EDA Distribution",
-      desc: "Scatter plot untuk melihat sebaran data (Decision Boundary). Semakin terpisah warnanya, semakin mudah model membedakan antara Baseline vs Stress.",
+      desc: "Scatter plot untuk melihat sebaran data (Decision Boundary). Menggunakan 'Balanced Sampling' agar kelas minoritas tetap terlihat.",
     },
     {
       icon: Zap,
@@ -214,6 +222,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({
   const [insight, setInsight] = useState<string | null>(null);
   const [loadingInsight, setLoadingInsight] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [pcaData, setPcaData] = useState<PCAResponse | null>(null);
 
   // Theme Constants
   const chartText = isDark ? "#94a3b8" : "#64748b";
@@ -221,33 +230,68 @@ export const Analytics: React.FC<AnalyticsProps> = ({
   const tooltipBg = isDark ? "#0f172a" : "#ffffff";
   const tooltipText = isDark ? "#f8fafc" : "#0f172a";
 
-  // --- PERFORMANCE OPTIMIZATION START ---
+  // Load PCA Data on mount
+  useEffect(() => {
+    const loadPCA = async () => {
+      const res = await fetchPCAAnalysis();
+      setPcaData(res);
+    };
+    loadPCA();
+  }, []);
 
-  const sampledData = useMemo(() => {
+  // --- PERFORMANCE & BALANCING OPTIMIZATION ---
+
+  // 1. Temporal Data (Line Chart): Needs to be chronological, just downsampled
+  const temporalData = useMemo(() => {
     const MAX_POINTS = 150;
     if (data.length <= MAX_POINTS) return data;
     const step = Math.ceil(data.length / MAX_POINTS);
     return data.filter((_, index) => index % step === 0);
   }, [data]);
 
-  const correlationData = useMemo(() => {
-    const withVector = data.map((d) => ({
+  // 2. Balanced Analysis Data (Scatter Charts):
+  // STRATIFIED SAMPLING: Ensure we get equal parts of Label 0, 1, and 2
+  const balancedAnalysisData = useMemo(() => {
+    // A. Preprocess with Vector3
+    const processed = data.map((d) => ({
       ...d,
       accMagnitude: Math.sqrt(
         Math.pow(d.x, 2) + Math.pow(d.y, 2) + Math.pow(d.z, 2)
       ),
     }));
 
-    const MAX_POINTS = 200;
-    if (withVector.length <= MAX_POINTS) return withVector;
-    const step = Math.ceil(withVector.length / MAX_POINTS);
-    return withVector.filter((_, index) => index % step === 0);
+    // B. Split by Class
+    const c0 = processed.filter((d) => d.label === 0);
+    const c1 = processed.filter((d) => d.label === 1);
+    const c2 = processed.filter((d) => d.label === 2);
+
+    // C. Define Target per class (approx 66 items per class to get ~200 total)
+    const TARGET_PER_CLASS = 70;
+
+    // D. Helper to sample evenly from array
+    const sampleEvenly = (arr: any[]) => {
+      if (arr.length <= TARGET_PER_CLASS) return arr;
+      const step = Math.floor(arr.length / TARGET_PER_CLASS);
+      // We use step sampling to maintain some variety instead of just the first 70
+      return arr.filter((_, i) => i % step === 0).slice(0, TARGET_PER_CLASS);
+    };
+
+    const s0 = sampleEvenly(c0);
+    const s1 = sampleEvenly(c1);
+    const s2 = sampleEvenly(c2);
+
+    // E. Combine and Sort by ID to keep dot rendering consistent
+    return [...s0, ...s1, ...s2].sort((a, b) => a.id - b.id);
   }, [data]);
 
   const rawSliceData = useMemo(() => {
     const ZOOM_POINTS = 200;
     return data.slice(-ZOOM_POINTS);
   }, [data]);
+
+  console.log(data.filter((d) => d.label === 0).length);
+  console.log(data.filter((d) => d.label === 1).length)
+  console.log(data.filter((d) => d.label === 2).length)
 
   const labelDist = useMemo(
     () => [
@@ -491,7 +535,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({
           </h3>
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={sampledData}>
+              <LineChart data={temporalData}>
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
@@ -543,7 +587,197 @@ export const Analytics: React.FC<AnalyticsProps> = ({
           </div>
         </div>
 
-        {/* --- NEW SECTION: Vector3 Correlations --- */}
+        {/* --- NEW SECTION: PCA Latent Space --- */}
+        <div className="col-span-1 lg:col-span-2 xl:col-span-3 mt-4 mb-2">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-indigo-500/10 rounded-lg">
+              <Layers
+                size={20}
+                className="text-indigo-600 dark:text-indigo-400"
+              />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                Latent Space Analysis (PCA)
+              </h3>
+              <p className="text-xs text-slate-500">
+                Dimensionality Reduction (6D → 3D). Total Variance Explained:{" "}
+                <span className="text-indigo-500 font-bold">
+                  {(pcaData?.variance?.total
+                    ? pcaData.variance.total * 100
+                    : 0
+                  ).toFixed(1)}
+                  %
+                </span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* PCA 1: PC1 vs PC2 (Top View) */}
+        <div className="glass-card p-5 rounded-2xl">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4 flex justify-between">
+            <span>2D Projection (PC1 vs PC2)</span>
+            <span className="text-indigo-500">Top View</span>
+          </h3>
+          <div className="h-60 w-full">
+            {pcaData ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <ScatterChart
+                  margin={{ top: 10, right: 10, bottom: 10, left: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                  <XAxis
+                    type="number"
+                    dataKey="pc1"
+                    name="PC1"
+                    stroke={chartText}
+                    fontSize={10}
+                  />
+                  <YAxis
+                    type="number"
+                    dataKey="pc2"
+                    name="PC2"
+                    stroke={chartText}
+                    fontSize={10}
+                  />
+                  <Tooltip
+                    cursor={{ strokeDasharray: "3 3" }}
+                    content={<CustomTooltip />}
+                  />
+                  <Scatter name="Clusters" data={pcaData.data} fill="#8884d8">
+                    {pcaData.data.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={LABEL_COLORS[entry.label] || "#8884d8"}
+                        fillOpacity={0.7}
+                      />
+                    ))}
+                  </Scatter>
+                </ScatterChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-slate-500 text-xs animate-pulse">
+                Loading PCA...
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* PCA 2: PC2 vs PC3 (Side View) */}
+        <div className="glass-card p-5 rounded-2xl">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4 flex justify-between">
+            <span>Depth Projection (PC2 vs PC3)</span>
+            <span className="text-indigo-500">Side View</span>
+          </h3>
+          <div className="h-60 w-full">
+            {pcaData ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <ScatterChart
+                  margin={{ top: 10, right: 10, bottom: 10, left: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                  <XAxis
+                    type="number"
+                    dataKey="pc2"
+                    name="PC2"
+                    stroke={chartText}
+                    fontSize={10}
+                  />
+                  <YAxis
+                    type="number"
+                    dataKey="pc3"
+                    name="PC3"
+                    stroke={chartText}
+                    fontSize={10}
+                  />
+                  <Tooltip
+                    cursor={{ strokeDasharray: "3 3" }}
+                    content={<CustomTooltip />}
+                  />
+                  <Scatter name="Clusters" data={pcaData.data} fill="#8884d8">
+                    {pcaData.data.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={LABEL_COLORS[entry.label] || "#8884d8"}
+                        fillOpacity={0.7}
+                      />
+                    ))}
+                  </Scatter>
+                </ScatterChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-slate-500 text-xs animate-pulse">
+                Loading PCA...
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* PCA Stats / Explained Variance */}
+        <div className="glass-card p-5 rounded-2xl flex flex-col justify-center">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4">
+            Variance Explained
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between text-xs mb-1 text-slate-400">
+                <span>PC1 (Primary Axis)</span>
+                <span>
+                  {(pcaData?.variance.pc1
+                    ? pcaData.variance.pc1 * 100
+                    : 0
+                  ).toFixed(1)}
+                  %
+                </span>
+              </div>
+              <div className="h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-indigo-500"
+                  style={{ width: `${(pcaData?.variance.pc1 || 0) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-xs mb-1 text-slate-400">
+                <span>PC2 (Secondary Axis)</span>
+                <span>
+                  {(pcaData?.variance.pc2
+                    ? pcaData.variance.pc2 * 100
+                    : 0
+                  ).toFixed(1)}
+                  %
+                </span>
+              </div>
+              <div className="h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-indigo-400"
+                  style={{ width: `${(pcaData?.variance.pc2 || 0) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-xs mb-1 text-slate-400">
+                <span>PC3 (Depth Axis)</span>
+                <span>
+                  {(pcaData?.variance.pc3
+                    ? pcaData.variance.pc3 * 100
+                    : 0
+                  ).toFixed(1)}
+                  %
+                </span>
+              </div>
+              <div className="h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-indigo-300"
+                  style={{ width: `${(pcaData?.variance.pc3 || 0) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* --- SECTION: Vector3 Correlations --- */}
         <div className="col-span-1 lg:col-span-2 xl:col-span-3 mt-4 mb-2">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-orange-500/10 rounded-lg">
@@ -558,7 +792,10 @@ export const Analytics: React.FC<AnalyticsProps> = ({
               </h3>
               <p className="text-xs text-slate-500">
                 Analysis of Acceleration Magnitude (sqrt(x²+y²+z²)) vs
-                Physiological responses
+                Physiological responses.{" "}
+                <span className="text-cyan-500 font-bold">
+                  Balanced Sampling (Equal Class Size) applied.
+                </span>
               </p>
             </div>
           </div>
@@ -600,11 +837,11 @@ export const Analytics: React.FC<AnalyticsProps> = ({
                 />
                 <Scatter
                   name="HR vs Motion"
-                  data={correlationData}
+                  data={balancedAnalysisData}
                   fill="#ef4444"
                   shape="circle"
                 >
-                  {correlationData.map((entry, index) => (
+                  {balancedAnalysisData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={LABEL_COLORS[entry.label] || "#ef4444"}
@@ -653,11 +890,11 @@ export const Analytics: React.FC<AnalyticsProps> = ({
                 />
                 <Scatter
                   name="EDA vs Motion"
-                  data={correlationData}
+                  data={balancedAnalysisData}
                   fill="#8b5cf6"
                   shape="circle"
                 >
-                  {correlationData.map((entry, index) => (
+                  {balancedAnalysisData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={LABEL_COLORS[entry.label] || "#8b5cf6"}
@@ -706,11 +943,11 @@ export const Analytics: React.FC<AnalyticsProps> = ({
                 />
                 <Scatter
                   name="BVP vs Motion"
-                  data={correlationData}
+                  data={balancedAnalysisData}
                   fill="#06b6d4"
                   shape="circle"
                 >
-                  {correlationData.map((entry, index) => (
+                  {balancedAnalysisData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={LABEL_COLORS[entry.label] || "#06b6d4"}
@@ -770,7 +1007,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({
         <div className="glass-card p-5 rounded-2xl">
           <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-4 flex items-center gap-2">
             <BarChart2 size={16} className="text-blue-600 dark:text-blue-400" />
-            HR vs EDA Distribution (Sampled)
+            HR vs EDA Distribution (Balanced)
           </h3>
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -800,8 +1037,12 @@ export const Analytics: React.FC<AnalyticsProps> = ({
                   cursor={{ strokeDasharray: "3 3" }}
                   content={<CustomTooltip />}
                 />
-                <Scatter name="Samples" data={sampledData} fill="#8884d8">
-                  {sampledData.map((entry, index) => (
+                <Scatter
+                  name="Samples"
+                  data={balancedAnalysisData}
+                  fill="#8884d8"
+                >
+                  {balancedAnalysisData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={

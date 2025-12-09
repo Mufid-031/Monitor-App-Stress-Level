@@ -8,6 +8,7 @@ export interface StressDataPoint {
   hr: number;
   label: number; // 0 = Baseline, 1 = Transient Stress, 2 = High Stress
   timestamp: string;
+  accMagnitude?: number; // Optional derived property
 }
 
 export enum NavigationPage {
@@ -29,4 +30,22 @@ export interface PredictionInput {
 export interface InsightResponse {
   analysis: string;
   riskLevel: "Baseline" | "Elevated" | "High Risk";
+}
+
+export interface PCADataPoint {
+  id: number;
+  pc1: number;
+  pc2: number;
+  pc3: number;
+  label: number;
+}
+
+export interface PCAResponse {
+  data: PCADataPoint[];
+  variance: {
+    pc1: number;
+    pc2: number;
+    pc3: number;
+    total: number;
+  };
 }
