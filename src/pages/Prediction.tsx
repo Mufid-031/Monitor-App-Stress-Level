@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from "react";
 import { predictStressExplanation } from "../services/geminiService";
 import { predictWithModel, checkBackendStatus } from "../services/api";
@@ -10,7 +8,6 @@ import {
   AlertOctagon,
   Cpu,
   Zap,
-  Info,
   Server,
   Wifi,
   WifiOff,
@@ -21,7 +18,7 @@ interface PredictionProps {
   isDark?: boolean;
 }
 
-export const Prediction: React.FC<PredictionProps> = ({ isDark = true }) => {
+export const Prediction: React.FC<PredictionProps> = () => {
   const [input, setInput] = useState<PredictionInput>({
     x: 15.0,
     y: 18.0,
@@ -97,7 +94,16 @@ export const Prediction: React.FC<PredictionProps> = ({ isDark = true }) => {
     value,
     unit,
     colorClass,
-  }: any) => (
+  }: {
+    label: string;
+    name: string;
+    min: string;
+    max: string;
+    step: string;
+    value: number;
+    unit: string;
+    colorClass: string;
+  }) => (
     <div className="mb-6 group">
       <div className="flex justify-between mb-2">
         <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-white transition-colors">
