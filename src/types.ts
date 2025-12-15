@@ -1,3 +1,21 @@
+export interface StressDataResponse {
+  data: StressDataPoint[];
+  pagination: {
+    limit: number;
+    offset: number;
+    total: number;
+  };
+  details: {
+    avg_hr: number;
+    avg_eda: number;
+    labels: {
+      "0": number;
+      "1": number;
+      "2": number;
+    };
+  };
+}
+
 export interface StressDataPoint {
   id: number;
   x: number;

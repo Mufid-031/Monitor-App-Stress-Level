@@ -41,10 +41,10 @@ import {
 } from "lucide-react";
 import { getExploratoryInsights } from "../services/geminiService";
 import { fetchPCAAnalysis } from "../services/api";
-import type { PCAResponse, StressDataPoint } from "../types";
+import type { PCAResponse, StressDataResponse } from "../types";
 
 interface AnalyticsProps {
-  data: StressDataPoint[];
+  data: StressDataResponse;
   isDark?: boolean;
 }
 
@@ -244,16 +244,16 @@ export const Analytics: React.FC<AnalyticsProps> = ({
   // 1. Temporal Data (Line Chart): Needs to be chronological, just downsampled
   const temporalData = useMemo(() => {
     const MAX_POINTS = 150;
-    if (data.length <= MAX_POINTS) return data;
-    const step = Math.ceil(data.length / MAX_POINTS);
-    return data.filter((_, index) => index % step === 0);
+    if (data.data.length <= MAX_POINTS) return data.data;
+    const step = Math.ceil(data.data.length / MAX_POINTS);
+    return data.data.filter((_, index) => index % step === 0);
   }, [data]);
 
   // 2. Balanced Analysis Data (Scatter Charts):
   // STRATIFIED SAMPLING: Ensure we get equal parts of Label 0, 1, and 2
   const balancedAnalysisData = useMemo(() => {
     // A. Preprocess with Vector3
-    const processed = data.map((d) => ({
+    const processed = data.data.map((d) => ({
       ...d,
       accMagnitude: Math.sqrt(
         Math.pow(d.x, 2) + Math.pow(d.y, 2) + Math.pow(d.z, 2)
@@ -286,28 +286,28 @@ export const Analytics: React.FC<AnalyticsProps> = ({
 
   const rawSliceData = useMemo(() => {
     const ZOOM_POINTS = 200;
-    return data.slice(-ZOOM_POINTS);
+    return data.data.slice(-ZOOM_POINTS);
   }, [data]);
 
-  console.log(data.filter((d) => d.label === 0).length);
-  console.log(data.filter((d) => d.label === 1).length)
-  console.log(data.filter((d) => d.label === 2).length)
+  console.log(data.data.filter((d) => d.label === 0).length);
+  console.log(data.data.filter((d) => d.label === 1).length);
+  console.log(data.data.filter((d) => d.label === 2).length);
 
   const labelDist = useMemo(
     () => [
       {
         name: "Base (0)",
-        value: data.filter((d) => d.label === 0).length,
+        value: data.details.labels["0"],
         fill: "#10b981",
       },
       {
         name: "Mid (1)",
-        value: data.filter((d) => d.label === 1).length,
+        value: data.details.labels["1"],
         fill: "#f59e0b",
       },
       {
         name: "High (2)",
-        value: data.filter((d) => d.label === 2).length,
+        value: data.details.labels["2"],
         fill: "#ef4444",
       },
     ],
@@ -321,7 +321,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({
       2: { hr: 0, eda: 0, bvp: 0, y: 0, count: 0 },
     };
 
-    data.forEach((d) => {
+    data.data.forEach((d) => {
       const label =
         d.label === 0 || d.label === 1 || d.label === 2 ? d.label : 0;
       if (sums[label] !== undefined) {
@@ -374,14 +374,14 @@ export const Analytics: React.FC<AnalyticsProps> = ({
   const handleGenerateInsight = async () => {
     setLoadingInsight(true);
     const avgHr = (
-      data.reduce((a, b) => a + (b.hr || 0), 0) / (data.length || 1)
+      data.data.reduce((a, b) => a + (b.hr || 0), 0) / (data.data.length || 1)
     ).toFixed(2);
     const avgEda = (
-      data.reduce((a, b) => a + (b.eda || 0), 0) / (data.length || 1)
+      data.data.reduce((a, b) => a + (b.eda || 0), 0) / (data.data.length || 1)
     ).toFixed(2);
 
     const summary = `
-      Total Samples: ${data.length}
+      Total Samples: ${data.data.length}
       Avg HR: ${avgHr}
       Avg EDA: ${avgEda}
       Class Balance (0/1/2): ${labelDist.map((d) => d.value).join("/")}

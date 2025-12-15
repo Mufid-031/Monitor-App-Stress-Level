@@ -10,10 +10,10 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { CHART_COLORS } from "../constants";
-import type { StressDataPoint } from "../types";
+import type { StressDataResponse } from "../types";
 
 interface DashboardProps {
-  data: StressDataPoint[];
+  data: StressDataResponse;
   isDark?: boolean;
 }
 
@@ -21,18 +21,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
   data,
   isDark = true,
 }) => {
-  const stats = useMemo(() => {
-    const total = data.length;
-    const baseline = data.filter((d) => d.label === 0).length;
-    const transient = data.filter((d) => d.label === 1).length;
-    const highStress = data.filter((d) => d.label === 2).length;
+  console.log("Dashboard rendering with data:", data);
 
-    const avgHr = data.reduce((acc, curr) => acc + curr.hr, 0) / total;
-    const avgEda = data.reduce((acc, curr) => acc + curr.eda, 0) / total;
+  const stats = useMemo(() => {
+    const total = data.pagination.total;
+    const baseline = data.details.labels["0"];
+    const transient = data.details.labels["1"];
+    const highStress = data.details.labels["2"];
+
+    const avgHr = data.details.avg_hr;
+    const avgEda = data.details.avg_eda;
     return { total, baseline, transient, highStress, avgHr, avgEda };
   }, [data]);
 
-  const recentData = data.slice(-40);
+  const recentData = data.data.slice(-40);
   const chartText = isDark ? "#94a3b8" : "#64748b";
   const gridColor = isDark ? "#1e293b" : "#e2e8f0";
 

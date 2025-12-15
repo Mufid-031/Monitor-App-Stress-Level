@@ -8,7 +8,7 @@ import { MOCK_DATASET } from "./constants";
 import { fetchRealDataset } from "./services/api";
 import { Menu, Sun, Moon } from "lucide-react";
 import "./App.css";
-import { NavigationPage, type StressDataPoint } from "./types";
+import { NavigationPage, type StressDataResponse } from "./types";
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<NavigationPage>(
@@ -18,7 +18,7 @@ const App: React.FC = () => {
   const [darkMode, setDarkMode] = useState(true);
 
   // State for data source
-  const [appData, setAppData] = useState<StressDataPoint[]>(MOCK_DATASET);
+  const [appData, setAppData] = useState<StressDataResponse>(MOCK_DATASET);
   const [isUsingRealData, setIsUsingRealData] = useState(false);
 
   // Toggle Dark Mode Class on HTML element
@@ -34,7 +34,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       const realData = await fetchRealDataset();
-      if (realData && realData.length > 0) {
+      if (realData && realData.data.length > 0) {
         console.log("Loaded real dataset from backend");
         setAppData(realData);
         setIsUsingRealData(true);

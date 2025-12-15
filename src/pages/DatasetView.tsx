@@ -6,10 +6,10 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import type { StressDataPoint } from "../types";
+import type { StressDataResponse } from "../types";
 
 interface DatasetViewProps {
-  data: StressDataPoint[];
+  data: StressDataResponse;
 }
 
 export const DatasetView: React.FC<DatasetViewProps> = ({ data }) => {
@@ -18,8 +18,8 @@ export const DatasetView: React.FC<DatasetViewProps> = ({ data }) => {
   const itemsPerPage = 12;
 
   const filteredData = useMemo(() => {
-    if (filterLabel === "all") return data;
-    return data.filter((d) => d.label === filterLabel);
+    if (filterLabel === "all") return data.data;
+    return data.data.filter((d) => d.label === filterLabel);
   }, [data, filterLabel]);
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
